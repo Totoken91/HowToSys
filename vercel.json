@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/sysadmin-v3.html" }
+  ]
+}
