@@ -222,6 +222,44 @@ html,body{height:100%;background:#3A6EA5;font-family:Tahoma,'MS Sans Serif',sans
 .mi.locked{opacity:.5;cursor:default}
 .mi.locked:hover{background:transparent;color:#000}
 
+/* ─── XP PANEL ─── */
+.xp-panel{padding:8px 12px;border-top:1px solid #C0C0C0;font-family:Tahoma,sans-serif}
+.xp-header{display:flex;justify-content:space-between;font-size:10px;font-weight:700}
+.xp-level{color:#666}
+.xp-bar-track{height:12px;background:#C0C0C0;border:1px inset #808080;margin:4px 0}
+.xp-bar-fill{height:100%;background:linear-gradient(90deg,#316AC5,#5B9BD5);transition:width .5s ease;max-width:100%}
+.xp-sub{font-size:9px;color:#666;text-align:right}
+
+/* ─── LEVEL UP MODAL ─── */
+.levelup-window{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) translateY(-20px);z-index:200000;width:360px;font-family:Tahoma,sans-serif;animation:levelUpIn .3s ease forwards}
+@keyframes levelUpIn{from{transform:translate(-50%,-50%) translateY(-20px);opacity:0}to{transform:translate(-50%,-50%) translateY(0);opacity:1}}
+.levelup-body{padding:16px;text-align:center;background:#ECE9D8}
+.levelup-title{font-size:18px;font-weight:700;margin:8px 0}
+.levelup-sub{font-size:11px;color:#666;margin-bottom:12px}
+.levelup-rewards{text-align:left;font-size:10px;background:#fff;border:1px inset #808080;padding:8px;margin:8px 0;max-height:120px;overflow-y:auto}
+.levelup-rewards div{padding:2px 0}
+
+/* ─── QUEST TAB ─── */
+.quest-panel{padding:12px}
+.quest-item{border:2px inset #D4D0C8;padding:8px;margin-bottom:6px;background:#fff;font-family:Tahoma,sans-serif}
+.quest-item.completed{background:#DFF0D8;opacity:.7}
+.quest-item .quest-title{font-size:11px;font-weight:700;color:#0A246A}
+.quest-item .quest-desc{font-size:10px;color:#333;margin:4px 0}
+.quest-item .quest-reward{font-size:9px;color:#666}
+.badge-chip{display:inline-block;padding:2px 8px;border:1px inset #D4D0C8;background:#ECE9D8;font-size:9px;font-family:Tahoma,sans-serif;margin:2px}
+
+/* ─── LOCKED CMD ─── */
+.cmd-panel{border:2px inset #D4D0C8;background:#F5F5F5;padding:6px 8px;margin-top:6px;font-family:Tahoma,sans-serif}
+.cmd-panel-header{font-size:10px;font-weight:700;color:#0A246A;cursor:pointer}
+.cmd-badge{display:inline-block;padding:1px 6px;border:1px solid #C0C0C0;background:#ECE9D8;font-size:9px;font-family:'Courier New',monospace;margin:2px}
+
+/* ─── ADMIN PANEL ─── */
+.admin-panel{width:280px;border-left:2px inset #D4D0C8;background:#ECE9D8;padding:8px;overflow-y:auto;font-family:Tahoma,sans-serif;font-size:10px}
+.admin-panel h4{font-size:11px;color:#0A246A;margin:0 0 6px}
+.admin-stat{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #D4D0C8}
+.action-log{font-size:9px;color:#333;margin-top:8px;max-height:120px;overflow-y:auto}
+.action-log div{padding:2px 0;border-bottom:1px dotted #D4D0C8}
+
 /* ─── UNLOCK TOAST ─── */
 .unlock-toast{position:fixed;bottom:20px;right:20px;padding:10px 16px;background:#FFFACD;border:1px solid #CCC;font-family:Tahoma,sans-serif;font-size:11px;color:#333;z-index:10000;box-shadow:2px 2px 6px rgba(0,0,0,.2)}
 
@@ -238,6 +276,7 @@ html,body{height:100%;background:#3A6EA5;font-family:Tahoma,'MS Sans Serif',sans
 <div class="title-bar-controls"><button aria-label="Minimize"></button><button aria-label="Maximize"></button><button aria-label="Close"></button></div>
 </div>
 <div class="window-body" style="margin:0;padding:0">
+<div id="xpPanel" class="xp-panel"></div>
 <div class="sidebar-stats">MODULES <span id="sD">0</span>/<span id="sT">0</span> &nbsp;|&nbsp; QUIZ <span id="sQ">0</span>% &nbsp;|&nbsp; LABS <span id="sL">0</span>/<span id="sLT">0</span></div>
 <div class="module-list" id="ml"></div>
 </div>
@@ -252,6 +291,7 @@ html,body{height:100%;background:#3A6EA5;font-family:Tahoma,'MS Sans Serif',sans
 <button class="tab active" role="tab" data-tab="course" onclick="sTab('course')">Cours</button>
 <button class="tab" role="tab" data-tab="quiz" onclick="sTab('quiz')">Quiz</button>
 <button class="tab" role="tab" data-tab="lab" onclick="sTab('lab')">Lab</button>
+<button class="tab" role="tab" data-tab="quests" onclick="sTab('quests')" id="questTab">Quetes</button>
 </div>
 <div class="content" id="ct"></div>
 </div>
@@ -344,15 +384,144 @@ const guiTasks={
 "event-viewer":[{id:"ev1",text:"Filtrez pour afficher uniquement les erreurs (System)",check:()=>evFilter.level==='Error'&&evActiveTab==='System'},{id:"ev2",text:"Consultez le journal Security",check:()=>evActiveTab==='Security'},{id:"ev3",text:"Recherchez 'login' dans les événements",check:()=>evFilter.search.toLowerCase().includes('login')}]
 };
 
+// ========= RPG/XP SYSTEM =========
+const LEVELS=[
+{level:1,title:"Stagiaire",xpRequired:0,color:"#666"},
+{level:2,title:"Technicien N1",xpRequired:150,color:"#2E7D32"},
+{level:3,title:"Technicien N2",xpRequired:400,color:"#1565C0"},
+{level:4,title:"Admin Systeme",xpRequired:800,color:"#6A1B9A"},
+{level:5,title:"Admin Domaine",xpRequired:1400,color:"#E65100"},
+{level:6,title:"Admin Senior",xpRequired:2200,color:"#B71C1C"},
+{level:7,title:"Architecte AD",xpRequired:3200,color:"#880E4F"},
+{level:8,title:"RSSI",xpRequired:4500,color:"#1A237E"}
+];
+function getCurrentLevel(xp){let cur=LEVELS[0];for(const l of LEVELS){if(xp>=l.xpRequired)cur=l}return cur}
+function getNextLevel(xp){return LEVELS.find(l=>l.xpRequired>xp)||null}
+function getXpPercent(xp){const cur=getCurrentLevel(xp);const next=getNextLevel(xp);if(!next)return 100;const range=next.xpRequired-cur.xpRequired;return Math.round(((xp-cur.xpRequired)/range)*100)}
+
+const LEVEL_REWARDS={
+2:{tools:[],cmds:['Get-ADUser','Get-ADGroup','Get-ADComputer'],quests:['quest-inactive-audit'],message:"Acces aux commandes de lecture AD deverrouille."},
+3:{tools:['admin-panel'],cmds:['Set-ADUser','Set-ADAccountPassword','Unlock-ADAccount'],quests:['quest-password-policy'],message:"Panneau Admin deverrouille. Commandes de modification AD disponibles."},
+4:{tools:['gpo-editor'],cmds:['New-GPO','New-GPLink','Get-GPO','Set-GPRegistryValue'],quests:['quest-gpo-hardening'],message:"Editeur GPO deverrouille. Acces aux politiques de groupe."},
+5:{tools:['sites-services'],cmds:['Get-ADReplicationSite','New-ADReplicationSite','New-ADReplicationSiteLink'],quests:['quest-replication-check'],message:"Sites & Services AD deverrouille."},
+6:{tools:[],cmds:['Get-WinEvent','AuditPol','Get-ADFineGrainedPasswordPolicy'],quests:['quest-security-audit'],message:"Acces aux outils d'audit et journalisation."},
+7:{tools:['schema-editor'],cmds:['Get-ADObject','Set-ADObject','New-ADFineGrainedPasswordPolicy'],quests:['quest-schema-extension'],message:"Editeur de schema AD deverrouille. Niveau Architecte."},
+8:{tools:[],cmds:['krbtgt-reset','Get-ADDomainController','Test-ComputerSecureChannel'],quests:['quest-golden-ticket'],message:"Acces RSSI complet. Outils de reponse a incident avances."}
+};
+const FREE_CMDS=['pwd','whoami','dir','ls','cd','cls','clear','help','Get-Help','Get-ADDomain','Get-ADOrganizationalUnit'];
+
+const QUESTS={
+'quest-inactive-audit':{title:"Nettoyage de printemps",description:"Desactiver 3 comptes inactifs depuis plus de 90 jours.",reward:100,rewardDesc:"+100 XP + badge Auditeur",check:()=>adUsers.filter(u=>!u.enabled).length>=3,badge:"Auditeur"},
+'quest-password-policy':{title:"Politique de fer",description:"Reinitialiser le mot de passe de 2 utilisateurs differents.",reward:100,rewardDesc:"+100 XP + badge Securite",check:()=>(guiState.passwordResets||0)>=2,badge:"Securite"},
+'quest-gpo-hardening':{title:"Forteresse GPO",description:"Creer et lier 2 GPO differentes dans le domaine.",reward:100,rewardDesc:"+100 XP + badge Architecte GPO",check:()=>gpoList.filter(g=>g.l&&g.l!=='').length>=2,badge:"Architecte GPO"},
+'quest-replication-check':{title:"Le reseau ne ment pas",description:"Creer un site AD et y associer un subnet.",reward:100,rewardDesc:"+100 XP + badge Infrastructure",check:()=>(guiState.adSites||[]).length>=2,badge:"Infrastructure"},
+'quest-security-audit':{title:"Oeil de faucon",description:"Consulter le panneau Admin et identifier un compte suspect.",reward:100,rewardDesc:"+100 XP + badge Analyste SOC",check:()=>guiState.adminPanelOpened&&adUsers.filter(u=>!u.enabled).length>=1,badge:"Analyste SOC"},
+'quest-schema-extension':{title:"Connais ton schema",description:"Ouvrir l'editeur de schema et consulter 3 attributs.",reward:100,rewardDesc:"+100 XP + badge Architecte AD",check:()=>(guiState.schemaViewCount||0)>=3,badge:"Architecte AD"},
+'quest-golden-ticket':{title:"Golden Ticket",description:"Desactiver un compte compromis ET terminer le lab du module 11.",reward:150,rewardDesc:"+150 XP + badge RSSI Elite",check:()=>{const u=adUsers.find(x=>x.sam==='admin.service');return u&&!u.enabled&&st.p[11]?.ld},badge:"RSSI Elite"}
+};
+
+function unlockRewardsForLevel(level){
+const r=LEVEL_REWARDS[level];if(!r)return;
+if(!st.unlockedTools)st.unlockedTools=[];
+if(!st.unlockedCmds)st.unlockedCmds=[];
+if(!st.quests)st.quests={};
+r.tools.forEach(t=>{if(!st.unlockedTools.includes(t))st.unlockedTools.push(t)});
+r.cmds.forEach(c=>{if(!st.unlockedCmds.includes(c))st.unlockedCmds.push(c)});
+r.quests.forEach(q=>{if(!st.quests[q])st.quests[q]='active'});
+}
+
+function gainXP(amount,reason){
+if(!amount||amount<=0)return;
+st.xp=(st.xp||0)+amount;
+const newLvl=getCurrentLevel(st.xp);
+if(newLvl.level>(st.level||1)){
+st.level=newLvl.level;
+unlockRewardsForLevel(newLvl.level);
+sv();
+showLevelUpModal(newLvl);
+}else{sv()}
+updateXPBar();
+showToast('+'+amount+' XP — '+reason);
+}
+
+function updateXPBar(){
+const xp=st.xp||0;const cur=getCurrentLevel(xp);const next=getNextLevel(xp);const pct=getXpPercent(xp);
+const el=document.getElementById('xpPanel');if(!el)return;
+if(!next){el.innerHTML=`<div class="xp-header"><span class="xp-title" style="color:${cur.color}">${cur.title}</span><span class="xp-level">Nv. ${cur.level}</span></div><div class="xp-bar-track"><div class="xp-bar-fill" style="width:100%"></div></div><div class="xp-sub" style="color:#2E7D32">* Niveau maximum atteint</div>`;return}
+el.innerHTML=`<div class="xp-header"><span class="xp-title" style="color:${cur.color}">${cur.title}</span><span class="xp-level">Nv. ${cur.level}</span></div><div class="xp-bar-track"><div class="xp-bar-fill" style="width:${pct}%"></div></div><div class="xp-sub">${xp} / ${next.xpRequired} XP</div>`;
+}
+
+function showLevelUpModal(lvl){
+const r=LEVEL_REWARDS[lvl.level];
+let rewardsHtml='';
+if(r){
+if(r.cmds.length)rewardsHtml+=`<div><b>Commandes :</b> ${r.cmds.join(', ')}</div>`;
+if(r.tools.length)rewardsHtml+=`<div><b>Outils :</b> ${r.tools.join(', ')}</div>`;
+if(r.quests.length)rewardsHtml+=`<div><b>Quetes :</b> ${r.quests.length} nouvelle(s)</div>`;
+if(r.message)rewardsHtml+=`<div style="margin-top:6px;font-style:italic">${r.message}</div>`;
+}
+const el=document.getElementById('dialogRoot');
+el.innerHTML=`<div class="levelup-window window"><div class="title-bar"><div class="title-bar-text">Promotion — Nouveau grade</div><div class="title-bar-controls"><button aria-label="Close" onclick="closeDialog()"></button></div></div><div class="levelup-body"><div class="levelup-title" style="color:${lvl.color}">${lvl.title}</div><div class="levelup-sub">Niveau ${lvl.level} atteint — ${st.xp} XP</div>${rewardsHtml?`<div class="levelup-rewards">${rewardsHtml}</div>`:''}<button class="wd-btn primary" onclick="closeDialog()" style="margin-top:8px">OK</button></div></div>`;
+}
+
+function isCmdUnlocked(cmd){
+if(!cmd)return true;
+const base=cmd.trim().split(/\s+/)[0].replace(/^["']/,'');
+if(FREE_CMDS.some(fc=>base.toLowerCase()===fc.toLowerCase()))return true;
+if(!st.unlockedCmds)return false;
+return st.unlockedCmds.some(uc=>base.toLowerCase()===uc.toLowerCase());
+}
+
+function getRequiredLevelForCmd(cmd){
+const base=cmd.trim().split(/\s+/)[0].replace(/^["']/,'');
+for(const[lv,r]of Object.entries(LEVEL_REWARDS)){
+if(r.cmds.some(c=>c.toLowerCase()===base.toLowerCase()))return{level:parseInt(lv),info:LEVELS.find(l=>l.level===parseInt(lv))};
+}return null;
+}
+
+function checkAllQuests(){
+if(!st.quests)return;
+for(const[id,q]of Object.entries(QUESTS)){
+if(st.quests[id]==='active'&&q.check()){
+st.quests[id]='completed';
+if(!st.badges)st.badges=[];
+if(!st.badges.includes(q.badge))st.badges.push(q.badge);
+gainXP(q.reward,'Quete: '+q.title);
+}}sv();
+}
+
+function renderQuests(c){
+const active=[];const completed=[];
+if(st.quests){for(const[id,status]of Object.entries(st.quests)){const q=QUESTS[id];if(!q)continue;if(status==='active')active.push({id,...q});if(status==='completed')completed.push({id,...q})}}
+let h='<div class="quest-panel"><h2 style="font-size:14px;color:#0A246A;margin-bottom:12px">Quetes bonus</h2>';
+if((st.level||1)<2){h+='<p style="font-size:11px;color:#666">Atteignez le niveau 2 pour debloquer les quetes.</p>';}
+else{
+if(!active.length&&!completed.length)h+='<p style="font-size:11px;color:#666">Aucune quete disponible pour le moment.</p>';
+active.forEach(q=>{h+=`<div class="quest-item"><div class="quest-title">${q.title}</div><div class="quest-desc">${q.description}</div><div class="quest-reward">${q.rewardDesc}</div></div>`});
+if(completed.length){h+='<h3 style="font-size:11px;color:#666;margin:12px 0 6px">Completees</h3>';
+completed.forEach(q=>{h+=`<div class="quest-item completed"><div class="quest-title">${q.title}</div><div class="quest-desc">${q.description}</div></div>`})}
+if(st.badges&&st.badges.length){h+='<h3 style="font-size:11px;color:#666;margin:12px 0 6px">Badges</h3>';
+st.badges.forEach(b=>{h+=`<span class="badge-chip">${b}</span>`})}}
+h+='</div>';c.innerHTML=h;
+}
+
 // ========= STATE =========
 const SK='sysadmin-v3';
 let st=JSON.parse(localStorage.getItem(SK)||'null');
 if(!st||!st.p||st.p.length!==M.length){st={cm:0,ct:'course',lm:'ps',unlockedUntil:0,p:M.map(()=>({cr:false,qs:null,qa:[],ls:0,ld:false}))};}
 if(st.unlockedUntil===undefined)st.unlockedUntil=0;
+if(st.xp===undefined)st.xp=0;
+if(st.level===undefined)st.level=1;
+if(!st.quests)st.quests={};
+if(!st.badges)st.badges=[];
+if(!st.unlockedTools)st.unlockedTools=[];
+if(!st.unlockedCmds)st.unlockedCmds=[];
+// Rebuild unlocks for already-reached levels
+for(let lv=2;lv<=st.level;lv++)unlockRewardsForLevel(lv);
 const sv=()=>localStorage.setItem(SK,JSON.stringify(st));
 const isW=i=>M[i]?.os==='windows';
 const pr=i=>isW(i)?'PS C:\\&gt; ':'admin@sys:~$ ';
-let guiState=JSON.parse(localStorage.getItem('sysadmin-v3-gui')||'null')||{selNode:null,tasksDone:[]};
+let guiState=JSON.parse(localStorage.getItem('sysadmin-v3-gui')||'null')||{selNode:null,tasksDone:[],actionsLog:[],passwordResets:0,adminPanelOpened:false,schemaViewCount:0,adSites:['Default-First-Site-Name']};
 const svGui=()=>localStorage.setItem('sysadmin-v3-gui',JSON.stringify(guiState));
 
 // ========= SIDEBAR =========
@@ -381,13 +550,14 @@ const m=M[i],h=document.getElementById('mh');h.classList.toggle('wa',m.os==='win
 document.getElementById('bc').innerHTML=`<span>${m.os==='windows'?'PS C:\\\\':'~/'}</span>${m.slug}`;}
 function sTab(t){st.ct=t;sv();document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));rC()}
 function rC(){const m=M[st.cm],p=st.p[st.cm],c=document.getElementById('ct');
-if(st.ct==='course')rCourse(c,m,p);else if(st.ct==='quiz')rQuiz(c,m,p);else rLab(c,m,p);}
+if(st.ct==='course')rCourse(c,m,p);else if(st.ct==='quiz')rQuiz(c,m,p);else if(st.ct==='quests')renderQuests(c);else rLab(c,m,p);
+const qt=document.getElementById('questTab');if(qt){if((st.level||1)<2){qt.style.opacity='.5';qt.title='Niveau 2 requis'}else{qt.style.opacity='1';qt.title=''}}}
 
 // ========= COURSE =========
 function rCourse(c,m,p){const w=m.os==='windows';
 const inc=m.incident?`<div class="incident-card" data-priority="${m.incident.priority}"><div class="incident-header"><span class="incident-type">${m.incident.type}</span><span class="incident-priority ${m.incident.priority}">${m.incident.priority}</span></div><div class="incident-from">De : ${m.incident.from}</div><div class="incident-msg">${m.incident.message}</div></div>`:'';
 c.innerHTML=`<div class="course${w?' w':''} fade-up">${inc}${m.course}<button class="mark-read${p.cr?' done':''}${w?' wb':''}" onclick="mR()">${p.cr?'✓ Terminé':'Marquer lu'}</button></div>`;c.scrollTop=0;}
-function mR(){st.p[st.cm].cr=true;sv();checkUnlock();rS();rC()}
+function mR(){const p=st.p[st.cm];if(!p.cr){p.cr=true;gainXP(30,'Cours termine')}else{p.cr=true}sv();checkUnlock();rS();rC()}
 
 // ========= QUIZ =========
 function rQuiz(c,m,p){const w=m.os==='windows';
@@ -396,7 +566,7 @@ c.innerHTML=`<div class="fade-up">${m.quiz.map((q,qi)=>{const a=p.qa[qi]!==undef
 return`<div class="qq"><div class="qn">Q${qi+1}/${m.quiz.length}</div><div class="qt">${q.q}</div>${q.o.map((o,oi)=>{let cl='qo';if(a){if(oi===q.c)cl+=' c';else if(p.qa[qi]===oi)cl+=' x'}
 return`<button class="${cl}" ${a?'disabled':''} onclick="aQ(${qi},${oi})">${o}</button>`;}).join('')}<div class="qe${a?' s':''}">💡 ${q.e}</div></div>`;}).join('')}</div>`;c.scrollTop=0;}
 function aQ(qi,oi){const p=st.p[st.cm];if(p.qa[qi]!==undefined)return;p.qa[qi]=oi;
-if(p.qa.filter(a=>a!==undefined).length===M[st.cm].quiz.length)p.qs=p.qa.filter((a,i)=>a===M[st.cm].quiz[i].c).length;
+if(p.qa.filter(a=>a!==undefined).length===M[st.cm].quiz.length){const prevQs=p.qs;p.qs=p.qa.filter((a,i)=>a===M[st.cm].quiz[i].c).length;if(prevQs===null)gainXP(Math.round(20*(p.qs/5)),'Quiz '+p.qs+'/5')}
 sv();checkUnlock();rQuiz(document.getElementById('ct'),M[st.cm],st.p[st.cm]);rS();}
 function rQ(){st.p[st.cm].qa=[];st.p[st.cm].qs=null;sv();rC();rS()}
 // ========= LAB =========
@@ -404,7 +574,8 @@ function rLab(c,m,p){const w=m.os==='windows';const hasGui=w&&m.gui;
 if(hasGui){const mode=st.lm||'ps';
 c.innerHTML=`<div style="height:100%;display:flex;flex-direction:column"><div class="lab-toggle"><button class="lt-btn${mode==='ps'?' active':''}" onclick="st.lm='ps';sv();rC()">⌨️ POWERSHELL</button><button class="lt-btn${mode==='gui'?' active':''}" onclick="st.lm='gui';sv();rC()">🖥️ INTERFACE GRAPHIQUE</button></div><div style="flex:1;overflow:hidden">${mode==='gui'?renderGUI(m,p):renderTerminal(m,p)}</div></div>`;
 if(mode==='gui')setTimeout(()=>initGUI(m),50);else{const inp=document.getElementById('tinp');if(inp){inp.addEventListener('keydown',e=>{if(e.key==='Enter')subC()});inp.focus()}}
-}else{c.innerHTML=renderTerminal(m,p);const inp=document.getElementById('tinp');if(inp){inp.addEventListener('keydown',e=>{if(e.key==='Enter')subC()});inp.focus()}}}
+}else{c.innerHTML=renderTerminal(m,p)+renderCmdPanel();const inp=document.getElementById('tinp');if(inp){inp.addEventListener('keydown',e=>{if(e.key==='Enter')subC()});inp.focus()}}}
+function renderCmdPanel(){const cmds=[...FREE_CMDS,...(st.unlockedCmds||[])];return`<div class="cmd-panel"><div class="cmd-panel-header" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">📋 Commandes disponibles (${cmds.length})</div><div style="display:none;margin-top:4px">${cmds.map(c=>`<span class="cmd-badge">${c}</span>`).join('')}</div></div>`}
 
 function renderTerminal(m,p){const w=m.os==='windows';const tc=w?'terminal w':'terminal';const ph=pr(st.cm);
 if(p.ld)return`<div class="${tc}"><div class="tb"><div class="td"><div class="tdo"></div><div class="tdo"></div><div class="tdo"></div></div>${w?'PowerShell':'bash'}</div><div class="tby"><div class="lc"><div class="big">LAB TERMINÉ ✓</div><button class="qr${w?' wb':''}" onclick="rL()">↻ Recommencer</button></div></div></div>`;
@@ -414,11 +585,13 @@ return`<div class="${tc}"><div class="tb"><div class="td"><div class="tdo"></div
 function sH(){const s=M[st.cm].lab[st.p[st.cm].ls];const b=document.getElementById('hb');if(b){b.textContent='💡 '+s.h;b.style.color='var(--amber)'}}
 function subC(){const inp=document.getElementById('tinp');const cmd=inp.value.trim();if(!cmd)return;inp.value='';
 const m=M[st.cm],p=st.p[st.cm],s=m.lab[p.ls],h=document.getElementById('th'),ph=pr(st.cm);
+// Check if command is locked
+if(!isCmdUnlocked(cmd)){const req=getRequiredLevelForCmd(cmd);const info=req?` — Disponible au niveau ${req.level} (${req.info.title})`:'';h.innerHTML+=`<div class="tl"><span class="pr">${ph}</span><span class="cm">${esc(cmd)}</span></div><div class="tl"><span class="er">Acces refuse : ${cmd.split(/\s+/)[0]}${info}</span></div>`;const b=document.getElementById('tby');if(b)b.scrollTop=b.scrollHeight;document.getElementById('tinp')?.focus();return}
 const ok=s.x.some(e=>cmd.toLowerCase()===e.toLowerCase());
 h.innerHTML+=`<div class="tl"><span class="pr">${ph}</span><span class="cm">${esc(cmd)}</span></div>`;
 if(ok){if(s.o)h.innerHTML+=`<div class="tl"><span class="ou">${esc(s.o).replace(/\n/g,'<br>')}</span></div>`;
 h.innerHTML+=`<div class="tl"><span class="ok">✓ Correct !</span></div><br>`;p.ls++;
-if(p.ls>=m.lab.length){p.ld=true;sv();checkUnlock();rS();setTimeout(()=>rLab(document.getElementById('ct'),m,p),600)}
+if(p.ls>=m.lab.length){const wasLd=p.ld;p.ld=true;if(!wasLd)gainXP(50,'Lab valide');sv();checkUnlock();rS();setTimeout(()=>rLab(document.getElementById('ct'),m,p),600)}
 else{sv();rS();const nx=m.lab[p.ls];h.innerHTML+=`<div class="ti"><span class="sn">ÉTAPE ${p.ls+1}/${m.lab.length}</span>${nx.i}<div class="th" id="hb" onclick="sH()">💡 Indice</div></div>`}}
 else h.innerHTML+=`<div class="tl"><span class="er">✗ Réessaie.</span></div>`;
 const b=document.getElementById('tby');if(b)b.scrollTop=b.scrollHeight;document.getElementById('tinp')?.focus();}
@@ -432,8 +605,8 @@ const fn={ad:renderADGui,'server-manager':renderSMGui,gpo:renderGPOGui,'dns-dhcp
 return(fn[t]||renderSMGui)(tH);}
 
 function renderADGui(tH){return`<div class="win-sim" id="winSim"><div class="win-titlebar"><span class="ico">🛡️</span> Active Directory Users and Computers<span class="spacer"></span><div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div></div>
-<div class="win-toolbar"><button class="win-tool" onclick="guiNewUser()">👤+ Utilisateur</button><button class="win-tool" onclick="guiNewGroup()">👥+ Groupe</button><button class="win-tool" onclick="guiRefresh()">🔄 Actualiser</button></div>${tH}
-<div class="win-body"><div class="win-tree" id="winTree"></div><div class="win-detail" id="winDetail"></div></div>
+<div class="win-toolbar"><button class="win-tool" onclick="guiNewUser()">👤+ Utilisateur</button><button class="win-tool" onclick="guiNewGroup()">👥+ Groupe</button><button class="win-tool" onclick="guiRefresh()">🔄 Actualiser</button>${st.unlockedTools.includes('admin-panel')?'<button class="win-tool" onclick="toggleAdminPanel()">📊 Admin</button>':''}${st.unlockedTools.includes('gpo-editor')?'<button class="win-tool" onclick="openGPOEditor()">📋 GPO</button>':''}${st.unlockedTools.includes('sites-services')?'<button class="win-tool" onclick="openSitesServices()">🌐 Sites</button>':''}${st.unlockedTools.includes('schema-editor')?'<button class="win-tool" onclick="openSchemaEditor()">📐 Schema</button>':''}</div>${tH}
+<div class="win-body"><div class="win-tree" id="winTree"></div><div class="win-detail" id="winDetail"></div><div id="adminPanelDiv" class="admin-panel" style="display:none"></div></div>
 <div class="win-status"><span id="winStatus">Prêt</span><span>econocom.local</span></div></div>`;}
 
 function renderSMGui(tH){
@@ -544,6 +717,35 @@ function pkiRevoke(i){if(!confirm('Révoquer le certificat de "'+certsList[i].s+
 function pkiRenew(i){const c=certsList[i];const now=new Date();const exp=new Date();exp.setFullYear(exp.getFullYear()+2);c.i=now.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});c.e=exp.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});c.v='Valide';showToast(`Certificat de ${c.s} renouvelé`);checkTasks();rC()}
 function pkiRefresh(){checkTasks();rC();showToast('Actualisé','info')}
 
+// ========= GUI TOOLS (RPG UNLOCKABLE) =========
+function logAction(msg){if(!guiState.actionsLog)guiState.actionsLog=[];const ts=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});guiState.actionsLog.unshift('['+ts+'] '+msg);if(guiState.actionsLog.length>20)guiState.actionsLog.pop();svGui()}
+
+function toggleAdminPanel(){
+const p=document.getElementById('adminPanelDiv');if(!p)return;
+if(p.style.display==='none'){p.style.display='';guiState.adminPanelOpened=true;svGui();checkAllQuests();
+const active=adUsers.filter(u=>u.enabled).length;const disabled=adUsers.filter(u=>!u.enabled).length;
+p.innerHTML=`<h4>Panneau Admin</h4><div class="admin-stat"><span>Utilisateurs actifs</span><b>${active}</b></div><div class="admin-stat"><span>Comptes desactives</span><b>${disabled}</b></div><div class="admin-stat"><span>Groupes</span><b>${adGroups.length}</b></div><div class="admin-stat"><span>Ordinateurs</span><b>${adComputers.length}</b></div><div class="action-log"><b>Dernieres actions :</b>${(guiState.actionsLog||[]).map(a=>'<div>'+a+'</div>').join('')||'<div style="color:#999">Aucune action</div>'}</div>`;
+}else{p.style.display='none'}}
+
+function openGPOEditor(){
+const gpos=gpoList.map((g,i)=>`<div class="wl-row" style="cursor:default"><div class="wl-cell" style="flex:2">${g.n}</div><div class="wl-cell">${g.l}</div><div class="wl-cell"><button class="win-tool" style="font-size:9px;padding:2px 4px" onclick="gpoEditorDelete(${i})">🗑️</button></div></div>`).join('');
+showDialog('Editeur GPO — '+gpoList.length+' GPO',[{label:'',type:'info',value:'<div style="max-height:200px;overflow:auto"><div class="wl-header"><div class="wl-h" style="flex:2">Nom</div><div class="wl-h">Liaison</div><div class="wl-h">Actions</div></div>'+gpos+'</div>'}],()=>{});
+}
+function gpoEditorDelete(i){gpoList.splice(i,1);checkTasks();rC();closeDialog();openGPOEditor()}
+
+function openSitesServices(){
+if(!guiState.adSites)guiState.adSites=['Default-First-Site-Name'];
+const sites=guiState.adSites.map(s=>'<li>'+s+'</li>').join('');
+showDialog('Sites & Services AD',[{label:'Sites AD',type:'info',value:'<ul style="list-style:none;padding:4px">'+sites+'</ul>'},{label:'Nouveau site',id:'newsite',ph:'Lyon'}],v=>{
+if(v.newsite&&!guiState.adSites.includes(v.newsite)){guiState.adSites.push(v.newsite);svGui();gainXP(40,'Site AD cree');checkAllQuests();showToast('Site '+v.newsite+' cree');closeDialog();openSitesServices()}});
+}
+
+function openSchemaEditor(){
+guiState.schemaViewCount=(guiState.schemaViewCount||0)+1;svGui();checkAllQuests();
+const attrs=[{n:'objectClass',s:'OID 2.5.4.0',desc:'Classe de l\'objet'},{n:'sAMAccountName',s:'Unicode String',desc:'Identifiant de connexion pre-2000'},{n:'userPrincipalName',s:'Unicode String',desc:'UPN (user@domain)'},{n:'member',s:'DN',desc:'Membres d\'un groupe'},{n:'memberOf',s:'DN',desc:'Groupes dont l\'objet est membre'},{n:'whenCreated',s:'Generalized Time',desc:'Date de creation'},{n:'pwdLastSet',s:'Large Integer',desc:'Dernier changement mot de passe'},{n:'servicePrincipalName',s:'Unicode String',desc:'SPN pour Kerberos'}];
+showDialog('Editeur de Schema AD (Lecture seule)',[{label:'',type:'info',value:'<div style="color:#C00;font-size:10px;margin-bottom:8px;font-weight:700">Zone dangereuse — Lecture seule</div><div style="max-height:250px;overflow:auto">'+attrs.map(a=>`<div style="padding:4px 0;border-bottom:1px dotted #ccc"><b>${a.n}</b> <span style="color:#666;font-size:9px">(${a.s})</span><br><span style="font-size:9px;color:#333">${a.desc}</span></div>`).join('')+'</div>'}],()=>{});
+}
+
 // ========= AD INTERACTIVITY =========
 function initGUI(m){if(!m.gui)return;const t=m.gui.type;if(t==='ad'){renderADTree();renderADDetail("Paris/Utilisateurs");document.addEventListener('click',hideCtx)}checkTasks()}
 function renderADTree(){const t=document.getElementById('winTree');if(!t)return;t.innerHTML=buildTree(AD_TREE,0)}
@@ -605,11 +807,11 @@ function guiNewUser(ou){showDialog('Nouvel utilisateur',[
 {label:'Nom complet',id:'name',ph:'Jean Dupont'},{label:'Identifiant (SAM)',id:'sam',ph:'jdupont'},{label:'Fonction',id:'title',ph:'Technicien'},{label:'Email',id:'email',ph:'user@econocom.local'},
 {label:'OU',id:'ou',type:'select',opts:["Paris/Utilisateurs","Lyon/Utilisateurs"]}
 ],v=>{if(!v.sam||!v.name)return;adUsers.push({sam:v.sam,name:v.name,ou:v.ou||ou||'Paris/Utilisateurs',enabled:true,groups:['Domain Users'],email:v.email||'',title:v.title||'',lastLogon:'Jamais'});
-adGroups.find(g=>g.name==='Domain Users')?.members.push(v.sam);checkTasks();guiRefresh()})}
+adGroups.find(g=>g.name==='Domain Users')?.members.push(v.sam);logAction('Compte '+v.sam+' cree dans '+(v.ou||ou||'Paris/Utilisateurs'));checkTasks();guiRefresh()})}
 
 function guiNewGroup(ou){showDialog('Nouveau groupe',[
 {label:'Nom',id:'name',ph:'DevOps'},{label:'Étendue',id:'scope',type:'select',opts:['Global','Domain Local','Universal']},{label:'Type',id:'type',type:'select',opts:['Security','Distribution']}
-],v=>{if(!v.name)return;adGroups.push({name:v.name,ou:ou||'Groupes',members:[],scope:v.scope||'Global',type:v.type||'Security'});checkTasks();guiRefresh()})}
+],v=>{if(!v.name)return;adGroups.push({name:v.name,ou:ou||'Groupes',members:[],scope:v.scope||'Global',type:v.type||'Security'});logAction('Groupe '+v.name+' cree');checkTasks();guiRefresh()})}
 
 function showUserProps(sam){const u=adUsers.find(x=>x.sam===sam);if(!u)return;
 showDialog('Propriétés — '+u.name,[
@@ -635,13 +837,14 @@ function guiRefresh(){const ou=ouPath(guiState.selNode||'Paris');renderADTree();
 
 function checkTasks(){const m=M[st.cm];if(!m.gui)return;const tasks=m.objectives||guiTasks[m.gui.type]||[];
 const prevCount=guiState.tasksDone.length;
-tasks.forEach(tk=>{if(!guiState.tasksDone.includes(tk.id)&&tk.check())guiState.tasksDone.push(tk.id)});
+tasks.forEach(tk=>{if(!guiState.tasksDone.includes(tk.id)&&tk.check()){guiState.tasksDone.push(tk.id);gainXP(40,'Objectif mission')}});
 if(guiState.tasksDone.length>prevCount)svGui();
-document.querySelectorAll('.gui-task').forEach((el,i)=>{if(tasks[i]){const done=guiState.tasksDone.includes(tasks[i].id);
-el.className='gui-task '+(done?'success':'pending');el.innerHTML=(done?'✅':'📋')+' '+tasks[i].text}})}
+checkAllQuests();
+document.querySelectorAll('.obj-item,.gui-task').forEach((el,i)=>{if(tasks[i]){const done=guiState.tasksDone.includes(tasks[i].id);
+el.className=(el.classList.contains('obj-item')?'obj-item ':'gui-task ')+(done?'done success':'pending');el.innerHTML=(done?'✅':'📋')+' '+tasks[i].text}})}
 
 // ========= INIT =========
-rS();sM(st.cm);
+updateXPBar();rS();sM(st.cm);
 </script>
 </body>
 </html>
