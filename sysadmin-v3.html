@@ -519,6 +519,8 @@ if(!st.quests)st.quests={};
 if(!st.badges)st.badges=[];
 if(!st.unlockedTools)st.unlockedTools=[];
 if(!st.unlockedCmds)st.unlockedCmds=[];
+// Recalculate level from XP (handles threshold changes between versions)
+st.level=getCurrentLevel(st.xp||0).level;
 // Rebuild unlocks for already-reached levels
 for(let lv=2;lv<=st.level;lv++)unlockRewardsForLevel(lv);
 const sv=()=>localStorage.setItem(SK,JSON.stringify(st));
