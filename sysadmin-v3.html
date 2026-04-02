@@ -387,28 +387,28 @@ const guiTasks={
 // ========= RPG/XP SYSTEM =========
 const LEVELS=[
 {level:1,title:"Stagiaire",xpRequired:0,color:"#666"},
-{level:2,title:"Technicien N1",xpRequired:150,color:"#2E7D32"},
-{level:3,title:"Technicien N2",xpRequired:400,color:"#1565C0"},
-{level:4,title:"Admin Systeme",xpRequired:800,color:"#6A1B9A"},
-{level:5,title:"Admin Domaine",xpRequired:1400,color:"#E65100"},
-{level:6,title:"Admin Senior",xpRequired:2200,color:"#B71C1C"},
-{level:7,title:"Architecte AD",xpRequired:3200,color:"#880E4F"},
-{level:8,title:"RSSI",xpRequired:4500,color:"#1A237E"}
+{level:2,title:"Technicien N1",xpRequired:200,color:"#2E7D32"},
+{level:3,title:"Technicien N2",xpRequired:600,color:"#1565C0"},
+{level:4,title:"Admin Systeme",xpRequired:1200,color:"#6A1B9A"},
+{level:5,title:"Admin Domaine",xpRequired:1480,color:"#E65100"},
+{level:6,title:"Admin Senior",xpRequired:1660,color:"#B71C1C"},
+{level:7,title:"Architecte AD",xpRequired:2800,color:"#880E4F"},
+{level:8,title:"RSSI",xpRequired:3800,color:"#1A237E"}
 ];
 function getCurrentLevel(xp){let cur=LEVELS[0];for(const l of LEVELS){if(xp>=l.xpRequired)cur=l}return cur}
 function getNextLevel(xp){return LEVELS.find(l=>l.xpRequired>xp)||null}
 function getXpPercent(xp){const cur=getCurrentLevel(xp);const next=getNextLevel(xp);if(!next)return 100;const range=next.xpRequired-cur.xpRequired;return Math.round(((xp-cur.xpRequired)/range)*100)}
 
 const LEVEL_REWARDS={
-2:{tools:[],cmds:['Get-ADUser','Get-ADGroup','Get-ADComputer'],quests:['quest-inactive-audit'],message:"Acces aux commandes de lecture AD deverrouille."},
-3:{tools:['admin-panel'],cmds:['Set-ADUser','Set-ADAccountPassword','Unlock-ADAccount'],quests:['quest-password-policy'],message:"Panneau Admin deverrouille. Commandes de modification AD disponibles."},
-4:{tools:['gpo-editor'],cmds:['New-GPO','New-GPLink','Get-GPO','Set-GPRegistryValue'],quests:['quest-gpo-hardening'],message:"Editeur GPO deverrouille. Acces aux politiques de groupe."},
-5:{tools:['sites-services'],cmds:['Get-ADReplicationSite','New-ADReplicationSite','New-ADReplicationSiteLink'],quests:['quest-replication-check'],message:"Sites & Services AD deverrouille."},
-6:{tools:[],cmds:['Get-WinEvent','AuditPol','Get-ADFineGrainedPasswordPolicy'],quests:['quest-security-audit'],message:"Acces aux outils d'audit et journalisation."},
-7:{tools:['schema-editor'],cmds:['Get-ADObject','Set-ADObject','New-ADFineGrainedPasswordPolicy'],quests:['quest-schema-extension'],message:"Editeur de schema AD deverrouille. Niveau Architecte."},
+2:{tools:[],cmds:['New-ADUser','Enable-ADAccount','Disable-ADAccount','Search-ADAccount','New-ADGroup','Add-ADGroupMember','Get-ADGroupMember','Get-ADPrincipalGroupMembership','Remove-ADGroupMember','Set-ADUser'],quests:['quest-inactive-audit'],message:"Commandes de creation et gestion de comptes AD deverrouillees."},
+3:{tools:['admin-panel'],cmds:['Set-ADAccountPassword','Unlock-ADAccount','Get-ADDefaultDomainPasswordPolicy','dsacls','Get-ACL'],quests:['quest-password-policy'],message:"Panneau Admin deverrouille. Commandes de delegation et securite AD."},
+4:{tools:['gpo-editor'],cmds:['New-GPO','New-GPLink','Get-GPO','Set-GPRegistryValue','gpupdate','Move-ADObject'],quests:['quest-gpo-hardening'],message:"Editeur GPO deverrouille. Acces aux politiques de groupe."},
+5:{tools:['sites-services'],cmds:['Get-ADReplicationSite','New-ADReplicationSite','New-ADReplicationSiteLink','Get-ADReplicationSiteLink','New-ADReplicationSubnet'],quests:['quest-replication-check'],message:"Sites & Services AD deverrouille."},
+6:{tools:[],cmds:['Get-WinEvent','AuditPol','Get-ADFineGrainedPasswordPolicy','New-ADFineGrainedPasswordPolicy','Add-ADFineGrainedPasswordPolicySubject','Get-ADUserResultantPasswordPolicy','Get-ADFineGrainedPasswordPolicySubject','klist'],quests:['quest-security-audit'],message:"Outils d'audit, FGPP et reponse a incident deverrouilles."},
+7:{tools:['schema-editor'],cmds:['Get-ADObject','Set-ADObject'],quests:['quest-schema-extension'],message:"Editeur de schema AD deverrouille. Niveau Architecte."},
 8:{tools:[],cmds:['krbtgt-reset','Get-ADDomainController','Test-ComputerSecureChannel'],quests:['quest-golden-ticket'],message:"Acces RSSI complet. Outils de reponse a incident avances."}
 };
-const FREE_CMDS=['pwd','whoami','dir','ls','cd','cls','clear','help','Get-Help','Get-ADDomain','Get-ADOrganizationalUnit'];
+const FREE_CMDS=['pwd','whoami','dir','ls','cd','cls','clear','help','Get-Help','Get-ADDomain','Get-ADOrganizationalUnit','Import-Module','Get-ADUser','Get-ADGroup','Get-ADComputer','echo','date','touch','mkdir','head','cat','cp','mv','rm','chmod','chown','sudo','useradd','userdel','usermod','groupadd','id','ps','kill','pgrep','top','htop','ping','ip','ss','dig','nslookup','curl','systemctl','journalctl','ssh-keygen','ssh-copy-id','ufw','lsblk','df','du','mount','mkfs.ext4','find','crontab','docker','python3','nohup'];
 
 const QUESTS={
 'quest-inactive-audit':{title:"Nettoyage de printemps",description:"Desactiver 3 comptes inactifs depuis plus de 90 jours.",reward:100,rewardDesc:"+100 XP + badge Auditeur",check:()=>adUsers.filter(u=>!u.enabled).length>=3,badge:"Auditeur"},
@@ -468,8 +468,11 @@ function isCmdUnlocked(cmd){
 if(!cmd)return true;
 const base=cmd.trim().split(/\s+/)[0].replace(/^["']/,'');
 if(FREE_CMDS.some(fc=>base.toLowerCase()===fc.toLowerCase()))return true;
-if(!st.unlockedCmds)return false;
-return st.unlockedCmds.some(uc=>base.toLowerCase()===uc.toLowerCase());
+if(st.unlockedCmds&&st.unlockedCmds.some(uc=>base.toLowerCase()===uc.toLowerCase()))return true;
+// Only block commands that are explicitly in a higher level reward list
+const req=getRequiredLevelForCmd(base);
+if(!req)return true; // Not in any level list = always allowed (arguments, paths, etc.)
+return false;
 }
 
 function getRequiredLevelForCmd(cmd){
